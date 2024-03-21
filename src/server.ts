@@ -5,7 +5,31 @@ import postgres from "postgres";
 
 const app = fastify();
 
-app.get("/links", async () => {
+app.get("/:code", async (request, reply) => {
+  const codeSchema = z.object({
+    code: z.string().min(3)
+  })
+
+  const { code } = codeSchema.parse(request.params);
+
+  const result = await sql`
+    SELECT id, original_url
+    FROM short_links
+    WHERE short_links.code = ${code}
+  `;
+
+  if(result.length === 0){
+    return reply.status(400).send({ message: "Link not found" })
+  }
+
+  const link = result[0];
+
+
+  return reply.redirect(301, link.original_url)
+
+})
+
+app.get("/api/links", async () => {
   const result = await sql`
     SELECT * 
     FROM short_links
@@ -16,7 +40,7 @@ app.get("/links", async () => {
 
 })
 
-app.post("/links", async (request, reply)=>{
+app.post("/api/links", async (request, reply)=>{
   const codeSchema = z.object({
     code: z.string().min(3),
     url: z.string().url(),
